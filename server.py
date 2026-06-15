@@ -275,6 +275,7 @@ def _run_module1():
             stderr=subprocess.PIPE,
             text=True, bufsize=1, encoding="utf-8", errors="replace",
             env=_env,
+            start_new_session=not IS_WINDOWS,
         )
         state.proc = proc
 
@@ -418,6 +419,7 @@ def _run_module3():
         stderr=subprocess.PIPE,
         text=True, bufsize=1, encoding="utf-8", errors="replace",
         env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        start_new_session=not IS_WINDOWS,
     )
     state.proc = proc
 
@@ -466,7 +468,10 @@ def _kill(proc):
             pass
     else:
         try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            own_pgid = os.getpgid(0)
+            child_pgid = os.getpgid(proc.pid)
+            if child_pgid != own_pgid:
+                os.killpg(child_pgid, signal.SIGTERM)
         except Exception:
             pass
     try:
