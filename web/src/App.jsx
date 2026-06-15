@@ -339,6 +339,117 @@ function Module2View({ onStop, lastGesture, logs, startKey }) {
   )
 }
 
+function Module3View({ onStop, feedbackState, logs, startKey }) {
+  const f = feedbackState
+  const target = f?.target_jaw ?? 0
+  const actual = f?.feedback_jaw ?? 0
+  const error   = target - actual
+  const errPct  = Math.abs(error) > 0.001 ? ((error / (target || 0.5)) * 100).toFixed(1) : '0.0'
+  const errSign = error > 0 ? '+' : ''
+  const angles  = f?.servo_angles ?? {}
+  const pid     = f?.pid ?? { Kp: 0, Ki: 0, Kd: 0 }
+
+  return (
+    <section className="module-view">
+      <div className="mod-topbar mod3-topbar">
+        <div className="mod-topbar-left">
+          <div className="mod-icon-circle mod3-circle">
+            <Icon name="fa-rotate" />
+          </div>
+          <div>
+            <h2>Lazo Cerrado &mdash; PID</h2>
+            <p>Control por retroalimentacion visual del robot</p>
+          </div>
+        </div>
+        <button className="btn btn-stop" onClick={onStop}>
+          <Icon name="fa-stop" /> Detener
+        </button>
+      </div>
+
+      <div className="m3-layout">
+        <div className="m3-main">
+          <SectionTitle icon="fa-video">Robot &mdash; Camara B</SectionTitle>
+          <CameraStream mid={3} startKey={startKey} />
+        </div>
+        <div className="m3-side">
+          <SectionTitle icon="fa-chart-line">PID &mdash; Mandibula</SectionTitle>
+          <div className="pid-cards">
+            <div className="pid-card pid-target">
+              <span className="pid-label">
+                <Icon name="fa-bullseye" /> Objetivo
+              </span>
+              <span className="pid-val">{target.toFixed(3)}</span>
+              <div className="pid-bar-bg">
+                <div className="pid-bar pid-bar-target" style={{ width: `${Math.min(target * 100, 100)}%` }} />
+              </div>
+            </div>
+            <div className="pid-card pid-feedback">
+              <span className="pid-label">
+                <Icon name="fa-arrow-left" /> Retroalimentacion
+              </span>
+              <span className="pid-val">{actual.toFixed(3)}</span>
+              <div className="pid-bar-bg">
+                <div className="pid-bar pid-bar-feedback" style={{ width: `${Math.min(actual * 100, 100)}%` }} />
+              </div>
+            </div>
+            <div className="pid-card pid-error">
+              <span className="pid-label">
+                <Icon name="fa-circle-exclamation" /> Error
+              </span>
+              <span className="pid-val">{errSign}{error.toFixed(3)}</span>
+              <div className="pid-bar-bg">
+                <div className="pid-bar pid-bar-error" style={{ width: `${Math.min(Math.abs(error) / 0.5 * 100, 100)}%` }} />
+              </div>
+              <span className="pid-err-pct">{errSign}{errPct}%</span>
+            </div>
+            <div className="pid-card pid-correction">
+              <span className="pid-label">
+                <Icon name="fa-wrench" /> Correccion
+              </span>
+              <span className="pid-val">{f?.correction?.toFixed(3) ?? '0.000'}</span>
+            </div>
+          </div>
+
+          <SectionTitle icon="fa-microchip">Angulos de Servo</SectionTitle>
+          <div className="servo-grid">
+            {Object.entries(angles).length === 0
+              ? <div className="servo-empty">Esperando datos...</div>
+              : Object.entries(angles).map(([k, v]) => (
+                <div key={k} className="servo-item">
+                  <span className="servo-name">{k}</span>
+                  <span className="servo-deg">{v.toFixed(1)}&deg;</span>
+                  <div className="servo-bar-wrap">
+                    <div className="servo-bar" style={{ width: `${((v + 90) / 180) * 100}%` }} />
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+
+          <SectionTitle icon="fa-sliders">Ganancias PID</SectionTitle>
+          <div className="pid-gains">
+            <div className="gain-item">
+              <span className="gain-label">Kp</span>
+              <span className="gain-val">{pid.Kp.toFixed(2)}</span>
+            </div>
+            <div className="gain-item">
+              <span className="gain-label">Ki</span>
+              <span className="gain-val">{pid.Ki.toFixed(3)}</span>
+            </div>
+            <div className="gain-item">
+              <span className="gain-label">Kd</span>
+              <span className="gain-val">{pid.Kd.toFixed(3)}</span>
+            </div>
+          </div>
+
+          <SectionTitle icon="fa-terminal">Log en vivo</SectionTitle>
+          <EventLog logs={logs} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function ModuleCard({ id, icon, title, desc, tags, color, onStart, enabled }) {
   return (
     <div
@@ -395,6 +506,14 @@ function ModuleSelector({ onStart, backendOk }) {
           color="#0ea5e9"
           onStart={onStart} enabled={backendOk}
         />
+        <ModuleCard
+          id={3} icon="fa-rotate"
+          title="Lazo Cerrado"
+          desc="Control PID por retroalimentacion visual. Dos camaras: una ve la referencia, otra ve al robot."
+          tags={['PID', '2 Camaras', 'MediaPipe']}
+          color="#10b981"
+          onStart={onStart} enabled={backendOk}
+        />
       </div>
     </section>
   )
@@ -410,6 +529,7 @@ export default function App() {
   const [captures,    setCaptures]     = useState([])
   const [logs,        setLogs]         = useState([])
   const [lastGesture, setLastGesture]  = useState(null)
+  const [feedbackState, setFeedbackState] = useState(null)
   const wsRef = useRef(null)
 
   useEffect(() => {
@@ -431,6 +551,7 @@ export default function App() {
           case 'log':                setLogs(p => [...p.slice(-300), msg.message]); break
           case 'robot_connected':    setRobotOk(true); break
           case 'robot_disconnected': setRobotOk(false); break
+          case 'feedback_state':     setFeedbackState(msg); break
         }
       }
     }
@@ -451,7 +572,7 @@ export default function App() {
   }, [])
 
   const startModule = useCallback(async (id) => {
-    setDetection({}); setCaptures([]); setLogs([]); setLastGesture(null)
+    setDetection({}); setCaptures([]); setLogs([]); setLastGesture(null); setFeedbackState(null)
     setStartKey(k => k + 1)   // fuerza reconexión del stream
     try { await fetch(`/api/module/${id}/start`, { method: 'POST' }) } catch {}
     setActiveModule(id)
@@ -505,6 +626,9 @@ export default function App() {
         )}
         {activeModule === 2 && (
           <Module2View onStop={stopModule} lastGesture={lastGesture} logs={logs} startKey={startKey} />
+        )}
+        {activeModule === 3 && (
+          <Module3View onStop={stopModule} feedbackState={feedbackState} logs={logs} startKey={startKey} />
         )}
       </main>
 
