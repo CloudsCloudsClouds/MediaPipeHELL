@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import platform
 import signal
 import sys
 import tempfile
@@ -115,7 +116,9 @@ def main():
     parser = argparse.ArgumentParser(description="Controlador de lazo cerrado con retroalimentacion visual")
     parser.add_argument("--camera-a", type=int, default=0, help="Indice camara A (escena externa)")
     parser.add_argument("--camera-b", type=int, default=1, help="Indice camara B (robot)")
-    parser.add_argument("--serial-port", default="/dev/ttyUSB0")
+    _IS_WINDOWS = platform.system() == "Windows"
+    _DEF_PORT = "COM6" if _IS_WINDOWS else "/dev/ttyUSB0"
+    parser.add_argument("--serial-port", default=_DEF_PORT)
     parser.add_argument("--baud", type=int, default=9600)
     parser.add_argument("--kp", type=float, default=0.8)
     parser.add_argument("--ki", type=float, default=0.05)
@@ -137,8 +140,11 @@ def main():
         nonlocal stop
         stop = True
 
-    signal.signal(signal.SIGTERM, _on_sig)
     signal.signal(signal.SIGINT, _on_sig)
+    try:
+        signal.signal(signal.SIGTERM, _on_sig)
+    except ValueError:
+        pass  # Windows no permite registrar handler para SIGTERM
 
     frame_count = 0
 

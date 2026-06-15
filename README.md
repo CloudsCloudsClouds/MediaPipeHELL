@@ -78,9 +78,14 @@ En desarrollo, usar `npm run dev` (Vite en puerto 5173).
 ### Servidor backend (siempre necesario)
 
 ```bash
+# Linux / WSL
 .venv/bin/python server.py
-# o
 make server
+
+# Windows (PowerShell)
+.\make.ps1 server
+# o directamente
+uv run python server.py
 ```
 
 Esto levanta:
@@ -233,6 +238,26 @@ make feedback ARGS="--camera-a 2 --camera-b 3"
 make face-gesture SERIAL_PORT=COM6
 ```
 
+### Windows (PowerShell)
+
+En Windows sin `make`, usa `make.ps1` desde PowerShell:
+
+```powershell
+.\make.ps1 help              # Lista todos los targets
+.\make.ps1 server            # Inicia backend
+.\make.ps1 feedback -ARGS "--camera-a 2 --camera-b 3"
+.\make.ps1 face-gesture -SERIAL_PORT COM6
+.\make.ps1 mod2
+```
+
+También puedes ejecutar los comandos `uv run python` directamente:
+
+```powershell
+uv run python server.py
+uv run python visual_feedback_controller.py --camera-a 0 --camera-b 1
+uv run python face_capture.py | uv run python classify_gesture.py | uv run python gesture_serial.py
+```
+
 ## Estructura del Proyecto
 
 ```
@@ -251,7 +276,8 @@ MediaPipeHELL/
 ├── set_directions.py               # Mapeo de direcciones (legacy)
 ├── serial_bridge.py                # Bridge serial a 115200 baud (legacy)
 ├── test_pipeline.py                # Genera datos de prueba para el pipeline
-├── Makefile                        # Comandos de uso común
+├── Makefile                        # Comandos de uso común (Linux/WSL)
+├── make.ps1                        # Comandos de uso común (Windows PowerShell)
 ├── control.md                      # Documentación del lazo cerrado (Módulo 3)
 ├── pyproject.toml                  # Dependencias Python
 ├── captures/                       # Capturas automáticas (Módulo 1)
