@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Remove-Item -Recurse -Force \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\\\\.venv\" -Confirm:$false)",
+      "PowerShell($env:UV_LINK_MODE = \"copy\"; Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; uv sync 2>&1)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; .\\\\.venv\\\\Scripts\\\\Activate.ps1; Write-Host \"venv activado: $\\($env:VIRTUAL_ENV\\)\")",
+      "PowerShell(Get-PnpDevice -Class Ports -Status OK)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; .\\\\.venv\\\\Scripts\\\\Activate.ps1; Write-Output '{\"gesture\": 3}' | python gesture_serial.py; Write-Host \"EXIT: $LASTEXITCODE\")",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; .\\\\.venv\\\\Scripts\\\\python.exe -m py_compile classify_gesture.py; Write-Host \"syntax OK: $LASTEXITCODE\")",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; $env:UV_LINK_MODE = \"copy\"; uv sync 2>&1 | Select-Object -Last 15)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\renge\\\\Downloads\\\\mediapipe-experiments-main\"; $env:UV_LINK_MODE = \"copy\"; uv sync 2>&1 | Select-Object -Last 20)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\renge\\.claude\\projects\\c--Users-renge-Downloads-mediapipe-experiments-main\\memory"
+    ]
+  }
+}
