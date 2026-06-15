@@ -8,6 +8,9 @@ Módulo 1: Lanza tea_object_emotion.py (ventana cv2 propia),
 Módulo 2: Lanza pipeline face_capture | classify_gesture | gesture_serial
           (ventana cv2 propia), parsea stderr para el log de gestos.
 
+Módulo 3: Lanza visual_feedback_controller.py (lazo cerrado con 2 cámaras),
+          parsea su stdout para estado del PID y retroalimentación visual.
+
 Cómo correr:
     python server.py
 """
@@ -17,7 +20,9 @@ import base64
 import io
 import json
 import os
+import platform
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -31,12 +36,13 @@ import serial as pyserial
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from PIL import Image, ImageDraw, ImageGrab
+from PIL import Image, ImageDraw
 
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
-SERIAL_PORT  = "COM6"
+IS_WINDOWS = platform.system() == "Windows"
+SERIAL_PORT  = "COM6" if IS_WINDOWS else "/dev/ttyUSB0"
 BAUD_RATE    = 9600
 CAPTURES_DIR = Path("captures")
 CAPTURES_DIR.mkdir(exist_ok=True)
@@ -125,7 +131,9 @@ async def api_start(mid: int):
         except: pass
     state.active_module = mid
     state.stop_event.clear()
-    fn = _run_module1 if mid == 1 else _run_module2
+    fn = {1: _run_module1, 2: _run_module2, 3: _run_module3}.get(mid)
+    if fn is None:
+        return {"error": "invalid module"}
     t = threading.Thread(target=fn, daemon=True)
     state.module_thread = t; t.start()
     await ws.broadcast({"type": "module_started", "module": mid})
@@ -172,6 +180,7 @@ _TMP = Path(tempfile.gettempdir())
 _FRAME_FILES = {
     1: _TMP / "tea_module1_frame.jpg",
     2: _TMP / "tea_module2_frame.jpg",
+    3: _TMP / "tea_module3_frame.jpg",
 }
 
 def _make_placeholder() -> bytes:
@@ -356,15 +365,17 @@ def _run_module2():
         f'"{PYTHON}" classify_gesture.py | '
         f'"{PYTHON}" gesture_serial.py'
     )
-    # Pasar como string (no lista) para que Windows no escape las comillas internas.
-    # Las comillas externas en cmd /c "..." agrupan el pipeline con pipes.
-    cmd_str = f'cmd /c "{pipeline}"'
+    if IS_WINDOWS:
+        cmd_str = f'cmd /c "{pipeline}"'
+    else:
+        cmd_str = pipeline
     _env = {**os.environ, "PYTHONUNBUFFERED": "1"}
     proc = subprocess.Popen(
         cmd_str, cwd=str(BASE_DIR),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, bufsize=1, encoding="utf-8", errors="replace",
-        env=_env,
+        env=_env, shell=True,
+        start_new_session=not IS_WINDOWS,
     )
     state.proc = proc
 
@@ -395,20 +406,69 @@ def _run_module2():
     _kill(proc)
 
 # ============================================================
+# MÓDULO 3 — visual_feedback_controller (lazo cerrado)
+# ============================================================
+def _run_module3():
+    push({"type": "log", "message": "Iniciando controlador de lazo cerrado..."})
+
+    proc = subprocess.Popen(
+        [PYTHON, str(BASE_DIR / "visual_feedback_controller.py")],
+        cwd=str(BASE_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True, bufsize=1, encoding="utf-8", errors="replace",
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    state.proc = proc
+
+    def _read_stdout():
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                if data.get("type") == "feedback_state":
+                    state.last_detection = data
+                    push({"type": "feedback_state", **data})
+            except json.JSONDecodeError:
+                pass
+
+    def _read_stderr():
+        for line in proc.stderr:
+            line = line.strip()
+            if not line:
+                continue
+            push({"type": "log", "message": line})
+
+    threading.Thread(target=_read_stdout, daemon=True).start()
+    threading.Thread(target=_read_stderr, daemon=True).start()
+
+    while not state.stop_event.is_set():
+        if proc.poll() is not None:
+            push({"type": "log", "message": "Controlador de lazo cerrado finalizado."})
+            break
+        time.sleep(0.5)
+
+    _kill(proc)
+
+# ============================================================
 # HELPERS
 # ============================================================
 def _kill(proc):
-    # En Windows, proc.terminate() solo mata el proceso padre (cmd.exe) pero
-    # deja huérfanos a sus hijos (face_capture, classify_gesture, gesture_serial).
-    # La cámara queda ocupada y el siguiente módulo no puede abrirla.
-    # taskkill /F /T mata el árbol completo de procesos.
-    try:
-        subprocess.run(
-            ['taskkill', '/F', '/T', '/PID', str(proc.pid)],
-            capture_output=True, timeout=5
-        )
-    except Exception:
-        pass
+    if IS_WINDOWS:
+        try:
+            subprocess.run(
+                ['taskkill', '/F', '/T', '/PID', str(proc.pid)],
+                capture_output=True, timeout=5
+            )
+        except Exception:
+            pass
+    else:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except Exception:
+            pass
     try:
         proc.terminate()
         proc.wait(timeout=4)
