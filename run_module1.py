@@ -43,13 +43,14 @@ class _VCWrapper:
         self._latest = None
         self._run    = False
         self._thread = None
+        self._lock   = threading.Lock()
 
     def _loop(self):
         while self._run:
-            ret, frame = self._c.read()
+            with self._lock:
+                ret, frame = self._c.read()
             if ret and frame is not None:
                 self._latest = frame
-                # No sobreescribir si YOLO acaba de poner un frame anotado
                 if time.time() - _last_annot > 0.5:
                     _write_frame(frame)
             else:
@@ -72,7 +73,8 @@ class _VCWrapper:
         if frame is not None:
             return True, frame
         # Fallback antes de que el hilo tenga frame
-        ret, frame = self._c.read()
+        with self._lock:
+            ret, frame = self._c.read()
         if ret and frame is not None:
             self._latest = frame
             _write_frame(frame)
