@@ -532,3 +532,87 @@ body {
 }
 .hint-item strong   { font-size:0.76rem; display:block; color:var(--text); }
 .hint-item small    { font-size:0.68rem; color:var(--text-dim); display:block; }
+
+/* ====================================================
+   MODULO 3 — LAYOUT + PID DASHBOARD
+   ==================================================== */
+.mod3-topbar { background: linear-gradient(135deg, #064e3b, #0d3b2e); }
+.mod3-circle { background: linear-gradient(135deg, var(--green), #047857); }
+
+.m3-layout {
+  display:grid; grid-template-columns:1fr 340px; gap:1.5rem;
+}
+@media(max-width:960px) { .m3-layout { grid-template-columns:1fr; } }
+
+.m3-main { display:flex; flex-direction:column; }
+.m3-side { display:flex; flex-direction:column; }
+.m3-side .event-log { height:150px; }
+
+/* ── PID Cards ── */
+.pid-cards {
+  display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;
+  margin-bottom:1rem;
+}
+.pid-card {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:var(--radius-sm); padding:0.75rem;
+  position:relative; overflow:hidden;
+}
+.pid-label  { font-size:0.68rem; color:var(--text-dim); display:flex; align-items:center; gap:0.3rem; margin-bottom:0.3rem; }
+.pid-val    { font-size:1.1rem; font-weight:800; font-variant-numeric:tabular-nums; display:block; margin-bottom:0.4rem; }
+.pid-target .pid-val     { color:#34d399; }
+.pid-feedback .pid-val   { color:#60a5fa; }
+.pid-error .pid-val      { color:#f87171; }
+.pid-correction .pid-val { color:#fbbf24; }
+
+.pid-bar-bg {
+  height:4px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden;
+}
+.pid-bar {
+  height:100%; border-radius:3px; transition:width 0.15s ease;
+}
+.pid-bar-target   { background:linear-gradient(90deg, #34d399, #6ee7b7); }
+.pid-bar-feedback { background:linear-gradient(90deg, #60a5fa, #93c5fd); }
+.pid-bar-error    { background:linear-gradient(90deg, #f87171, #fca5a5); }
+
+.pid-err-pct {
+  position:absolute; top:0.5rem; right:0.6rem;
+  font-size:0.7rem; font-weight:700; color:#f87171;
+}
+
+/* ── PID Gains ── */
+.pid-gains {
+  display:flex; gap:0.6rem; margin-bottom:1rem;
+}
+.gain-item {
+  flex:1; background:var(--surface); border:1px solid var(--border2);
+  border-radius:var(--radius-sm); padding:0.6rem; text-align:center;
+}
+.gain-label { font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:0.15rem; font-weight:700; }
+.gain-val   { font-size:0.95rem; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; }
+
+/* ── Servo Angles ── */
+.servo-grid {
+  display:flex; flex-direction:column; gap:0.35rem;
+  margin-bottom:1rem;
+}
+.servo-empty {
+  padding:1rem; text-align:center; color:var(--text-dim);
+  background:var(--surface); border:1px dashed var(--border2);
+  border-radius:var(--radius-sm); font-size:0.82rem;
+}
+.servo-item {
+  display:grid; grid-template-columns:50px 44px 1fr; align-items:center;
+  gap:0.5rem; background:var(--surface); border:1px solid var(--border);
+  border-radius:6px; padding:0.4rem 0.6rem;
+}
+.servo-name { font-size:0.72rem; color:var(--text-soft); font-weight:600; }
+.servo-deg  { font-size:0.78rem; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; text-align:right; }
+.servo-bar-wrap {
+  height:4px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden;
+}
+.servo-bar {
+  height:100%; border-radius:3px;
+  background:linear-gradient(90deg, var(--green), #34d399);
+  transition:width 0.15s ease;
+}
