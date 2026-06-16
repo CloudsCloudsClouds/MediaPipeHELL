@@ -17,7 +17,7 @@ import yaml
 from pathlib import Path
 
 # ==================== CONFIGURACIÓN ====================
-SERIAL_PORT = "/dev/ttyUSB0"  # Cambia a "COM3" en Windows
+SERIAL_PORT = "COM6"  # Cambia a "COM3" en Windows
 BAUD_RATE = 9600
 
 # Umbral de confianza para detección
@@ -493,6 +493,7 @@ class RobotTEA:
         if puerto_serial and puerto_serial != "None":
             try:
                 self.ser = serial.Serial(puerto_serial, BAUD_RATE, timeout=0.5)
+                time.sleep(2)   # esperar reset del Arduino tras abrir el puerto
                 print(f"✅ Robot conectado en {puerto_serial}")
             except:
                 print(f"⚠️ No se pudo conectar al robot - modo simulación")
@@ -533,12 +534,13 @@ class RobotTEA:
     
     def _expresion_cara(self, emocion):
         gesture_id = EMOCION_A_GESTO_CARA.get(emocion, 0)
-        salida = json.dumps({"gesture": gesture_id, "emocion": emocion, "source": "objeto"})
         print(f"😊 CARA: {emocion} (gesto {gesture_id})")
-        print(f"   Enviado: {salida}")
-        
+
         if self.ser:
-            self.ser.write(f"F{gesture_id}\n".encode())
+            self.ser.write(f"{gesture_id}\n".encode())
+            print(f"   Serial enviado: {gesture_id}")
+        else:
+            print(f"   [SIMULACION] CARA: gesto {gesture_id}")
 
 # ==================== PROGRAMA PRINCIPAL ====================
 
